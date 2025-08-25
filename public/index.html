@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consequences</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; text-align: center; }
+    .container { max-width: 500px; margin: auto; padding: 20px; }
+    h1 { margin-bottom: 20px; }
+    input, button { padding: 10px; margin: 5px; width: 90%; border-radius: 10px; border: 1px solid #ccc; }
+    #game, #sentence { display: none; margin-top: 20px; }
+    .card { background: white; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); padding: 20px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Consequences</h1>
+    <div id="join">
+      <input id="roomCode" placeholder="Room code">
+      <input id="playerName" placeholder="Your name">
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <div id="game">
+      <h2 id="prompt"></h2>
+      <input id="response" placeholder="Type here...">
+      <button onclick="submitPart()">Submit</button>
+    </div>
+
+    <div id="sentence" class="card">
+      <h2>Final Sentence</h2>
+      <p id="sentenceText"></p>
+      <button onclick="newRound()">Start New Round</button>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
