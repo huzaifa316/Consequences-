@@ -1,0 +1,20 @@
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;margin:0;background:#0b1020;color:#e6e9ef}
+.container{max-width:900px;margin:40px auto;padding:0 16px}
+h1{font-size:28px;text-align:center;margin-bottom:16px}
+.card{background:#131a32;border:1px solid #263056;border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(0,0,0,.25);margin-bottom:16px}
+.hidden{display:none}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px}
+input{padding:10px 12px;border:1px solid #2d375c;border-radius:10px;background:#0f1428;color:#eaeef7;outline:none;flex:1}
+button{padding:10px 14px;border:1px solid #2d375c;background:#202a4d;color:#eaeef7;border-radius:10px;cursor:pointer}
+button.primary{background:#3a56ff;border-color:#3a56ff}
+button:hover{filter:brightness(1.1)}
+.pillbox{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.pill{background:#0f1428;border:1px solid #2d375c;padding:6px 10px;border-radius:999px}
+.hint{opacity:.85;font-size:14px}
+.error{color:#ff7070}
+.turnbar{display:flex;justify-content:space-between;margin-bottom:10px}
+.grid{width:100%;border-collapse:collapse;margin:8px 0}
+.grid th,.grid td{border:1px dashed #2d375c;padding:8px;text-align:left;background:#0f1428}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #2d375c}
+.sentence{margin:10px 0;padding:10px;border:1px solid #2d375c;border-radius:12px;background:#0f1428}
+.sentence h4{margin:0 0 8px 0}
