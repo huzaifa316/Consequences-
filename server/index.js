@@ -134,7 +134,7 @@ io.on("connection", (socket) => {
 
     const player = {
       id: playerId,
-      name: displayName or "Player",
+      name: displayName || "Player",
       color: colorSafe,
       isHost: room.players.length === 0,
       connected: true,
