@@ -1,70 +1,113 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { randomBytes } from "crypto";
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const httpServer = createServer(app);
+const io = new Server(httpServer);
 
-app.use(express.static('public'));
+app.use(express.static("public"));
 
+const PORT = process.env.PORT || 3000;
+
+// Store rooms in memory
 const rooms = {};
 
-io.on('connection', (socket) => {
-  console.log('New connection', socket.id);
+// Helper: generate a unique 4-letter room code
+function generateRoomCode() {
+  let code;
+  do {
+    code = randomBytes(2).toString("hex").toUpperCase();
+  } while (rooms[code]);
+  return code;
+}
 
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
-    if (!rooms[roomCode]) {
-      rooms[roomCode] = { players: [], currentTurn: 0, round: 0, entries: {}, lastActive: Date.now() };
-    }
+io.on("connection", (socket) => {
+  let currentRoom = null;
+  let playerName = null;
 
-    const room = rooms[roomCode];
-    const player = { id: socket.id, name: playerName };
-    room.players.push(player);
-    room.lastActive = Date.now();
-
+  socket.on("createRoom", (name, callback) => {
+    const roomCode = generateRoomCode();
+    rooms[roomCode] = {
+      players: {},
+      gameStarted: false,
+      turnIndex: 0,
+      contributions: [],
+    };
+    currentRoom = roomCode;
+    playerName = name;
+    rooms[roomCode].players[socket.id] = { name, lastPing: Date.now() };
     socket.join(roomCode);
-    io.to(roomCode).emit('roomUpdate', room);
+    callback({ roomCode });
+    io.to(roomCode).emit("updatePlayers", Object.values(rooms[roomCode].players));
   });
 
-  socket.on('submitEntry', ({ roomCode, entry }) => {
+  socket.on("joinRoom", (roomCode, name, callback) => {
+    if (!rooms[roomCode]) {
+      callback({ error: "Room does not exist." });
+      return;
+    }
     const room = rooms[roomCode];
+    if (Object.keys(room.players).length >= 5) {
+      callback({ error: "Room is full (max 5 players)." });
+      return;
+    }
+    currentRoom = roomCode;
+    playerName = name;
+    room.players[socket.id] = { name, lastPing: Date.now() };
+    socket.join(roomCode);
+    callback({ success: true });
+    io.to(roomCode).emit("updatePlayers", Object.values(room.players));
+  });
+
+  socket.on("startGame", () => {
+    const room = rooms[currentRoom];
     if (!room) return;
+    const playerCount = Object.keys(room.players).length;
+    if (playerCount < 2) {
+      socket.emit("errorMessage", "At least 2 players required to start.");
+      return;
+    }
+    room.gameStarted = true;
+    room.turnIndex = 0;
+    room.contributions = [];
+    io.to(currentRoom).emit("gameStarted");
+    io.to(currentRoom).emit("nextTurn", getCurrentPlayer(room));
+  });
 
-    const currentPlayer = room.players[room.currentTurn];
-    room.entries[currentPlayer.name] = entry;
-
-    // Move turn forward
-    room.currentTurn = (room.currentTurn + 1) % room.players.length;
-
-    // If all players submitted
-    if (Object.keys(room.entries).length === room.players.length) {
-      io.to(roomCode).emit('sentenceComplete', room.entries);
-      room.entries = {};
-      room.currentTurn = 0;
+  socket.on("submitContribution", (text) => {
+    const room = rooms[currentRoom];
+    if (!room) return;
+    room.contributions.push({ player: playerName, text });
+    room.turnIndex++;
+    if (room.turnIndex >= Object.keys(room.players).length * 5) {
+      // Game complete → reveal
+      io.to(currentRoom).emit("sentenceComplete", room.contributions);
+      room.gameStarted = false;
     } else {
-      io.to(roomCode).emit('roomUpdate', room);
+      io.to(currentRoom).emit("nextTurn", getCurrentPlayer(room));
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('Disconnected', socket.id);
-    for (const roomCode in rooms) {
-      const room = rooms[roomCode];
-      const playerIndex = room.players.findIndex(p => p.id === socket.id);
-      if (playerIndex !== -1) {
-        const player = room.players[playerIndex];
-        setTimeout(() => {
-          const stillHere = io.sockets.adapter.rooms.get(roomCode)?.has(socket.id);
-          if (!stillHere) {
-            room.players.splice(playerIndex, 1);
-            io.to(roomCode).emit('roomUpdate', room);
-          }
-        }, 5000);
-      }
+  socket.on("disconnect", () => {
+    if (!currentRoom || !rooms[currentRoom]) return;
+    const room = rooms[currentRoom];
+    delete room.players[socket.id];
+    io.to(currentRoom).emit("updatePlayers", Object.values(room.players));
+    if (Object.keys(room.players).length === 0) {
+      delete rooms[currentRoom];
     }
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server running on port ' + PORT));
+function getCurrentPlayer(room) {
+  const playerIds = Object.keys(room.players);
+  const playerIndex = room.turnIndex % playerIds.length;
+  return room.players[playerIds[playerIndex]].name;
+}
+
+httpServer.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
