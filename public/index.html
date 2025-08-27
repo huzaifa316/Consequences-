@@ -1,35 +1,39 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Consequences</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app">
-    <div id="lobby">
-      <h1>Consequences</h1>
-      <input id="playerName" placeholder="Enter your name">
-      <button id="createBtn">Create Game</button>
-      <input id="roomCodeInput" placeholder="Enter room code">
-      <button id="joinBtn">Join Game</button>
-      <div id="error"></div>
+  <div id="lobby">
+    <h1>Consequences</h1>
+
+    <div id="create-form">
+      <input id="create-name" placeholder="Your name" />
+      <button id="create-btn">Create Game</button>
     </div>
 
-    <div id="room" style="display:none;">
-      <h2>Room: <span id="roomCode"></span></h2>
-      <div id="players"></div>
-      <button id="startBtn">Start Game</button>
-      <div id="turnInfo"></div>
-      <div id="inputArea" style="display:none;">
-        <input id="contribution" placeholder="Type here">
-        <button id="submitBtn">Submit</button>
-      </div>
-      <div id="result"></div>
+    <div id="join-form">
+      <input id="join-name" placeholder="Your name" />
+      <input id="join-code" placeholder="Room code" />
+      <button id="join-btn">Join Game</button>
     </div>
   </div>
+
+  <div id="game" class="hidden">
+    <h2 id="room-info"></h2>
+    <div id="players"></div>
+    <div id="turn-section">
+      <p id="turn-message"></p>
+      <input id="entry-input" placeholder="Type here..." class="hidden"/>
+      <button id="submit-btn" class="hidden">Submit</button>
+    </div>
+    <button id="start-btn">Start Game</button>
+    <div id="results"></div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
 </body>
