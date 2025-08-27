@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consequences</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="lobby" class="screen">
+    <h1>Consequences</h1>
+    <input id="roomCode" placeholder="Room Code" />
+    <input id="playerName" placeholder="Your Name" />
+    <button id="joinBtn">Join Game</button>
+    <div id="roomList"></div>
+  </div>
+
+  <div id="game" class="screen hidden">
+    <h2 id="roomTitle"></h2>
+    <p id="players"></p>
+    <h3 id="turn"></h3>
+    <input id="entryInput" placeholder="Type here..." />
+    <button id="submitBtn">Submit</button>
+    <div id="results"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
