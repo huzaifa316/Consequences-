@@ -1,11 +1,8 @@
 // server/gameStore.js
-// In-memory game state manager with disconnect handling
 const { nanoid } = require('nanoid');
 
 class GameStore {
-  constructor() {
-    this.rooms = {};
-  }
+  constructor() { this.rooms = {}; }
 
   createRoom(hostName, maxPlayers, hostSocket) {
     const code = nanoid(6);
@@ -43,13 +40,9 @@ class GameStore {
     if (!room) return null;
     const playerTurn = room.players[room.currentIndex % room.players.length];
     if (playerTurn.id !== socketId) return null;
-
     room.entries.push({ heading: room.headings[room.currentIndex], text, author: socketId });
     room.currentIndex++;
-
-    if (room.currentIndex >= room.headings.length) {
-      room.status = 'completed';
-    }
+    if (room.currentIndex >= room.headings.length) { room.status = 'completed'; }
     return room;
   }
 
@@ -65,9 +58,7 @@ class GameStore {
     return affectedRooms;
   }
 
-  listRooms() {
-    return Object.values(this.rooms).slice(-5);
-  }
+  listRooms() { return Object.values(this.rooms).slice(-5); }
 }
 
 module.exports = GameStore;

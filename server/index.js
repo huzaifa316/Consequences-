@@ -1,22 +1,20 @@
 // server/index.js
-// Express + Socket.IO server with disconnect handling
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors');
 const GameStore = require('./gameStore');
 
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
+const io = new Server(server, { cors: { origin: '*' } });
 
 const store = new GameStore();
 
 io.on('connection', (socket) => {
   console.log('New client connected', socket.id);
 
-  // Create room
   socket.on('room:create', ({ name, maxPlayers }, callback) => {
     const room = store.createRoom(name, maxPlayers, socket.id);
     socket.join(room.code);
@@ -24,7 +22,6 @@ io.on('connection', (socket) => {
     io.emit('rooms:update', store.listRooms());
   });
 
-  // Join room
   socket.on('room:join', ({ code, name }, callback) => {
     const room = store.joinRoom(code, name, socket.id);
     if (room) {
@@ -35,7 +32,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Start room
   socket.on('room:start', ({ code }) => {
     const room = store.startRoom(code, socket.id);
     if (room) {
@@ -43,7 +39,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Submit entry
   socket.on('turn:submit', ({ code, text }) => {
     const room = store.submitEntry(code, socket.id, text);
     if (room) {
@@ -55,9 +50,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnect
   socket.on('disconnect', () => {
-    console.log('Client disconnected', socket.id);
     const affectedRooms = store.leaveAllRooms(socket.id);
     affectedRooms.forEach(room => {
       if (room.players.length < 2 && room.status === 'in-progress') {
