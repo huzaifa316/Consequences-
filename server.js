@@ -1,8 +1,6 @@
-
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { randomBytes } from "crypto";
 
 const app = express();
 const httpServer = createServer(app);
@@ -10,104 +8,107 @@ const io = new Server(httpServer);
 
 app.use(express.static("public"));
 
-const PORT = process.env.PORT || 3000;
-
-// Store rooms in memory
 const rooms = {};
+const categories = ["Who", "What", "When", "Where", "With Whom"];
 
-// Helper: generate a unique 4-letter room code
-function generateRoomCode() {
-  let code;
-  do {
-    code = randomBytes(2).toString("hex").toUpperCase();
-  } while (rooms[code]);
-  return code;
+function createRoom(roomCode, hostName, socketId) {
+  rooms[roomCode] = {
+    host: socketId,
+    players: [{ id: socketId, name: hostName }],
+    currentTurn: 0,
+    roundEntries: [],
+    gameStarted: false,
+  };
 }
 
 io.on("connection", (socket) => {
-  let currentRoom = null;
-  let playerName = null;
+  console.log("A user connected:", socket.id);
 
-  socket.on("createRoom", (name, callback) => {
-    const roomCode = generateRoomCode();
-    rooms[roomCode] = {
-      players: {},
-      gameStarted: false,
-      turnIndex: 0,
-      contributions: [],
-    };
-    currentRoom = roomCode;
-    playerName = name;
-    rooms[roomCode].players[socket.id] = { name, lastPing: Date.now() };
+  socket.on("createRoom", ({ name }, callback) => {
+    const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+    createRoom(roomCode, name, socket.id);
     socket.join(roomCode);
-    callback({ roomCode });
-    io.to(roomCode).emit("updatePlayers", Object.values(rooms[roomCode].players));
+    callback({ success: true, roomCode });
+    io.to(roomCode).emit("updatePlayers", rooms[roomCode].players);
   });
 
-  socket.on("joinRoom", (roomCode, name, callback) => {
-    if (!rooms[roomCode]) {
-      callback({ error: "Room does not exist." });
-      return;
-    }
+  socket.on("joinRoom", ({ roomCode, name }, callback) => {
     const room = rooms[roomCode];
-    if (Object.keys(room.players).length >= 5) {
-      callback({ error: "Room is full (max 5 players)." });
+    if (!room) {
+      callback({ success: false, message: "Room not found" });
       return;
     }
-    currentRoom = roomCode;
-    playerName = name;
-    room.players[socket.id] = { name, lastPing: Date.now() };
+    if (room.players.length >= 5) {
+      callback({ success: false, message: "Room is full" });
+      return;
+    }
+    room.players.push({ id: socket.id, name });
     socket.join(roomCode);
     callback({ success: true });
-    io.to(roomCode).emit("updatePlayers", Object.values(room.players));
+    io.to(roomCode).emit("updatePlayers", room.players);
   });
 
-  socket.on("startGame", () => {
-    const room = rooms[currentRoom];
+  socket.on("startGame", ({ roomCode }) => {
+    const room = rooms[roomCode];
     if (!room) return;
-    const playerCount = Object.keys(room.players).length;
-    if (playerCount < 2) {
-      socket.emit("errorMessage", "At least 2 players required to start.");
+    if (room.players.length < 2) {
+      io.to(socket.id).emit("errorMessage", "Need at least 2 players to start.");
       return;
     }
     room.gameStarted = true;
-    room.turnIndex = 0;
-    room.contributions = [];
-    io.to(currentRoom).emit("gameStarted");
-    io.to(currentRoom).emit("nextTurn", getCurrentPlayer(room));
+    room.currentTurn = 0;
+    room.roundEntries = [];
+    io.to(roomCode).emit("gameStarted");
+    const currentPlayer = room.players[0];
+    io.to(roomCode).emit("turnUpdate", {
+      playerId: currentPlayer.id,
+      category: categories[0],
+    });
   });
 
-  socket.on("submitContribution", (text) => {
-    const room = rooms[currentRoom];
+  socket.on("submitEntry", ({ roomCode, text }) => {
+    const room = rooms[roomCode];
     if (!room) return;
-    room.contributions.push({ player: playerName, text });
-    room.turnIndex++;
-    if (room.turnIndex >= Object.keys(room.players).length * 5) {
-      // Game complete → reveal
-      io.to(currentRoom).emit("sentenceComplete", room.contributions);
-      room.gameStarted = false;
+
+    const turnIndex = room.currentTurn;
+    const category = categories[turnIndex % 5];
+    room.roundEntries.push({ category, text });
+
+    if (room.roundEntries.length === 5) {
+      // Round complete
+      io.to(roomCode).emit("roundComplete", room.roundEntries);
+      room.currentTurn = 0;
+      room.roundEntries = [];
     } else {
-      io.to(currentRoom).emit("nextTurn", getCurrentPlayer(room));
+      // Next turn
+      room.currentTurn++;
+      const nextPlayer = room.players[room.currentTurn % room.players.length];
+      const nextCategory = categories[room.currentTurn % 5];
+      io.to(roomCode).emit("turnUpdate", {
+        playerId: nextPlayer.id,
+        category: nextCategory,
+      });
     }
   });
 
   socket.on("disconnect", () => {
-    if (!currentRoom || !rooms[currentRoom]) return;
-    const room = rooms[currentRoom];
-    delete room.players[socket.id];
-    io.to(currentRoom).emit("updatePlayers", Object.values(room.players));
-    if (Object.keys(room.players).length === 0) {
-      delete rooms[currentRoom];
-    }
+    setTimeout(() => {
+      for (const code in rooms) {
+        const room = rooms[code];
+        const idx = room.players.findIndex((p) => p.id === socket.id);
+        if (idx !== -1) {
+          room.players.splice(idx, 1);
+          io.to(code).emit("updatePlayers", room.players);
+          if (room.players.length === 0) {
+            delete rooms[code];
+          }
+        }
+      }
+    }, 5000);
   });
 });
 
-function getCurrentPlayer(room) {
-  const playerIds = Object.keys(room.players);
-  const playerIndex = room.turnIndex % playerIds.length;
-  return room.players[playerIds[playerIndex]].name;
-}
-
+const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log(`Server listening on port ${PORT}`);
 });
